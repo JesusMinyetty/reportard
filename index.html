@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ReportaRD - Prototipo</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Estilos -->
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="phone-frame">
+
+    <!-- ========================= -->
+    <!-- SPLASH -->
+    <!-- ========================= -->
+    <section id="splash" class="screen active">
+      <div class="splash-logo">🛡️</div>
+      <h1 class="splash-title">ReportaRD</h1>
+      <p class="splash-sub">
+        Reporta incidentes y mantén tu comunidad segura
+      </p>
+      <div class="splash-dots">
+        <span class="dot active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <p class="splash-country">República Dominicana · 2026</p>
+    </section>
+
+    <!-- ========================= -->
+    <!-- LOGIN -->
+    <!-- ========================= -->
+    <section id="login" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>●●●●</span>
+      </div>
+
+      <div class="scroll-content auth-content">
+        <div class="splash-logo auth-logo">🛡️</div>
+        <h2 class="auth-title">Iniciar Sesión</h2>
+        <p class="auth-sub">Bienvenido a ReportaRD</p>
+
+        <div class="form-group">
+          <label for="login-email">Correo electrónico</label>
+          <input id="login-email" type="email" placeholder="correo@ejemplo.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="login-password">Contraseña</label>
+          <input id="login-password" type="password" placeholder="••••••••" />
+        </div>
+
+        <button class="btn-primary" onclick="loginUsuario()">Entrar</button>
+
+        <button class="btn-secondary mt-12" onclick="go('registro')">
+          ¿No tienes cuenta? Regístrate
+        </button>
+
+        <button class="btn-secondary mt-12" onclick="modoAnonimo()">
+          🔒 Modo Anónimo
+        </button>
+
+        <p class="small center mt-12">
+          Tu identidad será protegida · Ley 172-13 RD
+        </p>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- REGISTRO -->
+    <!-- ========================= -->
+    <section id="registro" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>←</span>
+      </div>
+
+      <div class="top-nav">
+        <button class="back-btn" onclick="go('login')">←</button>
+        <h2>Crear Cuenta</h2>
+      </div>
+
+      <div class="scroll-content p-16">
+        <div class="form-group">
+          <label for="registro-nombre">Nombre completo</label>
+          <input id="registro-nombre" type="text" placeholder="Ej: Jesus Gomez" />
+        </div>
+
+        <div class="form-group">
+          <label for="registro-email">Correo electrónico</label>
+          <input id="registro-email" type="email" placeholder="correo@ejemplo.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="registro-telefono">Teléfono</label>
+          <input id="registro-telefono" type="tel" placeholder="809-000-0000" />
+        </div>
+
+        <div class="form-group">
+          <label for="registro-sector">Sector / Barrio</label>
+          <select id="registro-sector">
+            <option value="" selected disabled>Selecciona tu sector</option>
+            <option value="Gazcue">Gazcue</option>
+            <option value="Piantini">Piantini</option>
+            <option value="Naco">Naco</option>
+            <option value="Villa Mella">Villa Mella</option>
+            <option value="Los Alcarrizos">Los Alcarrizos</option>
+            <option value="Santo Domingo Este">Santo Domingo Este</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="registro-password">Contraseña</label>
+          <input id="registro-password" type="password" placeholder="Mínimo 6 caracteres" />
+        </div>
+
+        <p class="small">
+          🔒 Tus datos están protegidos bajo la Ley No. 172-13 de Protección
+          de Datos Personales de la República Dominicana.
+        </p>
+
+        <button class="btn-primary mt-12" onclick="registrarUsuario()">
+          Crear Cuenta
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- MAPA -->
+    <!-- ========================= -->
+    <section id="mapa" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋 🛡️</span>
+      </div>
+
+      <div class="top-nav">
+        <h2>ReportaRD</h2>
+        <span class="nav-icon" onclick="showToast()">🔔</span>
+        <span class="nav-icon" onclick="go('perfil')">👤</span>
+      </div>
+
+      <div id="map-container">
+        <div id="map"></div>
+
+        <div class="map-legend">
+          <div class="legend-item">
+            <span class="legend-dot" style="background:#c62828;"></span>
+            Crítico
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background:#e65100;"></span>
+            Alto
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background:#f57f17;"></span>
+            Medio
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot" style="background:#2e7d32;"></span>
+            Bajo
+          </div>
+        </div>
+
+        <button class="report-fab" onclick="go('nuevo-reporte')">
+          ⚠️ Reportar Incidente
+        </button>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" data-screen="mapa" onclick="go('mapa')">
+          <span>🗺️</span>
+          <span>Mapa</span>
+        </div>
+        <div class="nav-item" data-screen="feed" onclick="go('feed')">
+          <span>📋</span>
+          <span>Reportes</span>
+        </div>
+        <div class="nav-item" data-screen="alertas" onclick="go('alertas')">
+          <span>🔔</span>
+          <span>Alertas</span>
+        </div>
+        <div class="nav-item" data-screen="perfil" onclick="go('perfil')">
+          <span>👤</span>
+          <span>Perfil</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- FEED / REPORTES -->
+    <!-- ========================= -->
+    <section id="feed" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+
+      <div class="top-nav">
+        <h2>Reportes Recientes</h2>
+      </div>
+
+      <div class="scroll-content p-16">
+        <div id="feed-list"></div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" data-screen="mapa" onclick="go('mapa')">
+          <span>🗺️</span>
+          <span>Mapa</span>
+        </div>
+        <div class="nav-item" data-screen="feed" onclick="go('feed')">
+          <span>📋</span>
+          <span>Reportes</span>
+        </div>
+        <div class="nav-item" data-screen="alertas" onclick="go('alertas')">
+          <span>🔔</span>
+          <span>Alertas</span>
+        </div>
+        <div class="nav-item" data-screen="perfil" onclick="go('perfil')">
+          <span>👤</span>
+          <span>Perfil</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- ALERTAS -->
+    <!-- ========================= -->
+    <section id="alertas" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+
+      <div class="top-nav">
+        <h2>Alertas Cercanas</h2>
+      </div>
+
+      <div class="scroll-content p-16">
+        <div class="card alert-item">
+          <strong>🚨 ALERTA ACTIVA · Radio 500m</strong>
+          <p class="small mt-8">
+            Asalto a mano armada reportado
+          </p>
+          <p class="small">
+            Av. Winston Churchill · Hace 15 min
+          </p>
+          <span class="badge badge-red mt-8">CRÍTICO</span>
+        </div>
+
+        <div class="card alert-item">
+          <strong>⚠️ ALERTA · Radio 1km</strong>
+          <p class="small mt-8">
+            Persona sospechosa en la zona
+          </p>
+          <p class="small">
+            Gazcue · Hace 1 hora
+          </p>
+          <span class="badge badge-yellow mt-8">MEDIO</span>
+        </div>
+
+        <h3 class="mt-12">Historial del día</h3>
+
+        <div class="card alert-item">
+          <strong>🚗 Robo de vehículo</strong>
+          <p class="small">Zona Colonial · Hace 32 min</p>
+        </div>
+
+        <div class="card alert-item">
+          <strong>🚨 Accidente de tránsito</strong>
+          <p class="small">Autopista Duarte · Hace 2h</p>
+        </div>
+
+        <div class="card stat-card mt-12">
+          <strong>📊 Estadísticas de hoy</strong>
+          <div class="summary-row">
+            <span>Reportes</span>
+            <span>12</span>
+          </div>
+          <div class="summary-row">
+            <span>Alertas</span>
+            <span>3</span>
+          </div>
+          <div class="summary-row">
+            <span>Resueltos</span>
+            <span>8</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" data-screen="mapa" onclick="go('mapa')">
+          <span>🗺️</span>
+          <span>Mapa</span>
+        </div>
+        <div class="nav-item" data-screen="feed" onclick="go('feed')">
+          <span>📋</span>
+          <span>Reportes</span>
+        </div>
+        <div class="nav-item" data-screen="alertas" onclick="go('alertas')">
+          <span>🔔</span>
+          <span>Alertas</span>
+        </div>
+        <div class="nav-item" data-screen="perfil" onclick="go('perfil')">
+          <span>👤</span>
+          <span>Perfil</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- PERFIL -->
+    <!-- ========================= -->
+    <section id="perfil" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+
+      <div class="top-nav">
+        <h2>Mi Perfil</h2>
+      </div>
+
+      <div class="scroll-content">
+        <div class="profile-header">
+          <div class="profile-avatar" id="perfil-avatar">RD</div>
+          <h2 id="perfil-nombre">Usuario ReportaRD</h2>
+          <p id="perfil-sector">República Dominicana</p>
+          <span class="badge badge-blue mt-8">✅ Usuario Verificado</span>
+        </div>
+
+        <div class="p-16">
+          <div class="card stat-card">
+            <div class="summary-row">
+              <span>Reportes</span>
+              <span>7</span>
+            </div>
+            <div class="summary-row">
+              <span>Resueltos</span>
+              <span>5</span>
+            </div>
+            <div class="summary-row">
+              <span>Reputación</span>
+              <span>⭐ 4.8</span>
+            </div>
+          </div>
+
+          <div class="card mt-12">
+            <div class="profile-menu-item">
+              <span>👤 Mis Datos</span>
+              <span>›</span>
+            </div>
+            <div class="profile-menu-item">
+              <span>📋 Mis Reportes</span>
+              <span>›</span>
+            </div>
+            <div class="profile-menu-item">
+              <span>🔔 Notificaciones</span>
+              <span>›</span>
+            </div>
+            <div class="profile-menu-item">
+              <span>🔒 Privacidad</span>
+              <span>›</span>
+            </div>
+          </div>
+
+          <button class="btn-danger mt-12" onclick="logoutUsuario()">
+            🚪 Cerrar Sesión
+          </button>
+
+          <p class="small center mt-12">
+            ReportaRD v1.0 · ITLA Grupo #43 · 2026
+          </p>
+        </div>
+      </div>
+
+      <div class="bottom-nav">
+        <div class="nav-item" data-screen="mapa" onclick="go('mapa')">
+          <span>🗺️</span>
+          <span>Mapa</span>
+        </div>
+        <div class="nav-item" data-screen="feed" onclick="go('feed')">
+          <span>📋</span>
+          <span>Reportes</span>
+        </div>
+        <div class="nav-item" data-screen="alertas" onclick="go('alertas')">
+          <span>🔔</span>
+          <span>Alertas</span>
+        </div>
+        <div class="nav-item" data-screen="perfil" onclick="go('perfil')">
+          <span>👤</span>
+          <span>Perfil</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- NUEVO REPORTE -->
+    <!-- ========================= -->
+    <section id="nuevo-reporte" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+
+      <div class="top-nav">
+        <button class="back-btn" onclick="go('mapa')">←</button>
+        <h2>Nuevo Reporte</h2>
+      </div>
+
+      <div class="scroll-content p-16">
+        <div class="card">
+          <strong>1. Tipo de incidente</strong>
+        </div>
+
+        <div class="cat-grid">
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🔪</div>
+            <div class="cat-label">Robo / Asalto</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🚗</div>
+            <div class="cat-label">Robo de Vehículo</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">💊</div>
+            <div class="cat-label">Narcotráfico</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🏚️</div>
+            <div class="cat-label">Vandalismo</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">👁️</div>
+            <div class="cat-label">Sospechoso</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🚨</div>
+            <div class="cat-label">Accidente</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🔫</div>
+            <div class="cat-label">Disparos</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">🆘</div>
+            <div class="cat-label">Emergencia</div>
+          </div>
+
+          <div class="cat-item" onclick="selectCat(this)">
+            <div class="cat-icon">📝</div>
+            <div class="cat-label">Otro</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong>2. Descripción y ubicación</strong>
+        </div>
+
+        <div class="form-group">
+          <label for="reporte-descripcion">Descripción del incidente</label>
+          <textarea
+            id="reporte-descripcion"
+            placeholder="Describe lo que ocurrió..."
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="reporte-ubicacion">Ubicación</label>
+          <input
+            id="reporte-ubicacion"
+            type="text"
+            placeholder="Ej: Piantini, Santo Domingo"
+          />
+          <p class="small mt-8">
+            📍 La ubicación GPS se agregará automáticamente si el navegador
+            lo permite.
+          </p>
+        </div>
+
+        <div class="form-group">
+          <label for="reporte-urgencia">Nivel de urgencia</label>
+          <select id="reporte-urgencia">
+            <option value="medio">🟡 Moderado</option>
+            <option value="alto">🟠 Alto</option>
+            <option value="critico">🔴 Crítico / Emergencia</option>
+            <option value="bajo">🟢 Bajo</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="input-evidencia">Adjuntar evidencia (opcional)</label>
+          <input
+            id="input-evidencia"
+            type="file"
+            accept="image/*,video/*"
+            class="file-input"
+          />
+          <p class="small mt-8">
+            📷 Toca para agregar foto o video.
+          </p>
+        </div>
+
+        <button
+          id="btn-enviar-reporte"
+          class="btn-danger"
+          onclick="enviarReporte()"
+        >
+          🚨 Enviar Reporte
+        </button>
+
+        <button class="btn-secondary mt-12" onclick="go('mapa')">
+          Cancelar
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- DETALLE -->
+    <!-- ========================= -->
+    <section id="detalle" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>📶 🔋</span>
+      </div>
+
+      <div class="top-nav">
+        <button class="back-btn" onclick="go('feed')">←</button>
+        <h2>Detalle del Reporte</h2>
+      </div>
+
+      <div class="scroll-content p-16">
+        <div class="card">
+          <h2 id="detalle-titulo">Reporte</h2>
+          <p class="small" id="detalle-tipo">Tipo</p>
+        </div>
+
+        <div class="card">
+          <div class="summary-row">
+            <span>Fecha y hora</span>
+            <span id="detalle-fecha">--</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Estado</span>
+            <span id="detalle-estado">--</span>
+          </div>
+
+          <div class="summary-row">
+            <span>Ubicación</span>
+            <span id="detalle-ubicacion">--</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <strong>Descripción</strong>
+          <p class="mt-8" id="detalle-descripcion">
+            Sin descripción.
+          </p>
+        </div>
+
+        <div class="card">
+          <strong>Evidencias adjuntas</strong>
+          <div id="detalle-evidencias" class="mt-8"></div>
+        </div>
+
+        <button class="btn-danger" onclick="showToast()">
+          🚨 Reportar como urgente
+        </button>
+      </div>
+    </section>
+
+    <!-- ========================= -->
+    <!-- CONFIRMACION -->
+    <!-- ========================= -->
+    <section id="confirmacion" class="screen">
+      <div class="status-bar">
+        <span>9:41</span>
+        <span>✅</span>
+      </div>
+
+      <div class="scroll-content confirmacion-content">
+        <div class="success-icon">✅</div>
+
+        <h2>¡Reporte Enviado!</h2>
+
+        <p class="mt-8">
+          Tu reporte fue recibido y está siendo procesado.
+          Las autoridades han sido notificadas.
+        </p>
+
+        <div class="card mt-12">
+          <p class="small">Número de seguimiento</p>
+          <h3 id="tracking-number">#RD-0000</h3>
+        </div>
+
+        <div class="card mt-12">
+          <div class="summary-row">
+            <span>📨 Confirmación enviada</span>
+            <span>✅</span>
+          </div>
+          <div class="summary-row">
+            <span>🗺️ Visible en el mapa</span>
+            <span>✅</span>
+          </div>
+        </div>
+
+        <button class="btn-primary mt-12" onclick="go('mapa')">
+          Volver al Mapa
+        </button>
+      </div>
+    </section>
+
+    <!-- Toast -->
+    <div id="toast" class="toast" style="display:none;">
+      🚨 Alerta en tu zona
+    </div>
+
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Cliente Supabase -->
+  <script src="supabase-client.js"></script>
+
+  <!-- Aplicación -->
+  <script src="app.js"></script>
+</body>
+</html>
