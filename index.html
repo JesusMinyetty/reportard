@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,6 +8,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
   <!-- HEADER DE ESCRITORIO -->
@@ -31,7 +33,8 @@
       <div class="splash-logo">🛡️</div>
       <h1 class="splash-title">ReportaRD</h1>
       <p class="splash-sub">Plataforma Nacional de Reportes de Incidentes</p>
-      <button class="btn-primary" style="max-width: 300px; margin-top: 30px;" onclick="go('login')">Iniciar Sesión</button>
+      <button class="btn-primary" style="max-width: 300px; margin-top: 30px;" onclick="go('login')">Iniciar
+        Sesión</button>
       <p class="splash-country">República Dominicana · 2026</p>
     </section>
 
@@ -41,7 +44,7 @@
         <div class="splash-logo">🛡️</div>
         <h2>Iniciar Sesión</h2>
         <p class="auth-sub">Bienvenido a la plataforma ReportaRD</p>
-        
+
         <div class="form-group">
           <label>Correo electrónico</label>
           <input id="login-email" type="email" placeholder="correo@ejemplo.com" />
@@ -61,7 +64,7 @@
       <div class="auth-container">
         <button class="back-link" onclick="go('login')">← Volver al Login</button>
         <h2>Crear Cuenta</h2>
-        
+
         <div class="form-row">
           <div class="form-group">
             <label>Nombre completo</label>
@@ -117,7 +120,8 @@
       <div class="page-container">
         <div class="page-header">
           <h2>📋 Reportes Recientes</h2>
-          <button class="btn-primary" style="width: auto; padding: 10px 20px;" onclick="go('nuevo-reporte')">+ Nuevo Reporte</button>
+          <button class="btn-primary" style="width: auto; padding: 10px 20px;" onclick="go('nuevo-reporte')">+ Nuevo
+            Reporte</button>
         </div>
         <div id="feed-list"></div>
       </div>
@@ -126,11 +130,22 @@
     <!-- ALERTAS -->
     <section id="alertas" class="screen">
       <div class="page-container">
-        <div class="page-header"><h2>🔔 Alertas y Estadísticas</h2></div>
+        <div class="page-header">
+          <h2>🔔 Alertas y Estadísticas</h2>
+        </div>
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-number">12</div><div class="stat-label">Reportes Hoy</div></div>
-          <div class="stat-card"><div class="stat-number">3</div><div class="stat-label">Alertas Activas</div></div>
-          <div class="stat-card"><div class="stat-number">8</div><div class="stat-label">Resueltos</div></div>
+          <div class="stat-card">
+            <div class="stat-number">12</div>
+            <div class="stat-label">Reportes Hoy</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">3</div>
+            <div class="stat-label">Alertas Activas</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">8</div>
+            <div class="stat-label">Resueltos</div>
+          </div>
         </div>
         <h3 style="margin-top: 30px;">Historial de Alertas</h3>
         <div class="card alert-item">
@@ -170,12 +185,30 @@
           <div class="card">
             <h3>1. Tipo de incidente</h3>
             <div class="cat-grid">
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">🔪</div><div class="cat-label">Robo / Asalto</div></div>
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">🚗</div><div class="cat-label">Robo de Vehículo</div></div>
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">💊</div><div class="cat-label">Narcotráfico</div></div>
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">🏚️</div><div class="cat-label">Vandalismo</div></div>
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">👁️</div><div class="cat-label">Sospechoso</div></div>
-              <div class="cat-item" onclick="selectCat(this)"><div class="cat-icon">🚨</div><div class="cat-label">Accidente</div></div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">🔪</div>
+                <div class="cat-label">Robo / Asalto</div>
+              </div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">🚗</div>
+                <div class="cat-label">Robo de Vehículo</div>
+              </div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">💊</div>
+                <div class="cat-label">Narcotráfico</div>
+              </div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">🏚️</div>
+                <div class="cat-label">Vandalismo</div>
+              </div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">👁️</div>
+                <div class="cat-label">Sospechoso</div>
+              </div>
+              <div class="cat-item" onclick="selectCat(this)">
+                <div class="cat-icon">🚨</div>
+                <div class="cat-label">Accidente</div>
+              </div>
             </div>
           </div>
           <div class="card">
@@ -184,28 +217,41 @@
               <label>Descripción del incidente</label>
               <textarea id="reporte-descripcion" placeholder="Describe lo que ocurrió..."></textarea>
             </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Ubicación</label>
-                <input id="reporte-ubicacion" type="text" placeholder="Ej: Piantini, Santo Domingo" />
+            <div class="form-group">
+              <label for="reporte-ubicacion">Ubicación</label>
+
+              <div class="input-with-button">
+                <input id="reporte-ubicacion" type="text" placeholder="Escribe sector, calle o dirección"
+                  autocomplete="off" />
+
+                <button type="button" class="btn-location" onclick="obtenerUbicacionExacta(this)">
+                  📍 GPS
+                </button>
               </div>
-              <div class="form-group">
-                <label>Nivel de urgencia</label>
-                <select id="reporte-urgencia">
-                  <option value="medio">🟡 Moderado</option>
-                  <option value="alto">🟠 Alto</option>
-                  <option value="critico">🔴 Crítico / Emergencia</option>
-                  <option value="bajo">🟢 Bajo</option>
-                </select>
-              </div>
+
+              <div id="ubicacion-sugerencias" class="sugerencias-ubicacion"></div>
+
+              <p class="small mt-8">
+                Escribe para ver sugerencias o presiona GPS para detectar la ubicación exacta.
+              </p>
             </div>
             <div class="form-group">
-              <label>Adjuntar evidencia (opcional)</label>
-              <input id="input-evidencia" type="file" accept="image/*,video/*" />
+              <label>Nivel de urgencia</label>
+              <select id="reporte-urgencia">
+                <option value="medio">🟡 Moderado</option>
+                <option value="alto">🟠 Alto</option>
+                <option value="critico">🔴 Crítico / Emergencia</option>
+                <option value="bajo">🟢 Bajo</option>
+              </select>
             </div>
           </div>
-          <button id="btn-enviar-reporte" class="btn-danger" onclick="enviarReporte()">🚨 Enviar Reporte</button>
+          <div class="form-group">
+            <label>Adjuntar evidencia (opcional)</label>
+            <input id="input-evidencia" type="file" accept="image/*,video/*" />
+          </div>
         </div>
+        <button id="btn-enviar-reporte" class="btn-danger" onclick="enviarReporte()">🚨 Enviar Reporte</button>
+      </div>
       </div>
     </section>
 
@@ -219,7 +265,8 @@
           <p class="small">Número de seguimiento</p>
           <h3 id="tracking-number">#RD-0000</h3>
         </div>
-        <button class="btn-primary" style="max-width: 300px; margin: 20px auto;" onclick="go('mapa')">Volver al Mapa</button>
+        <button class="btn-primary" style="max-width: 300px; margin: 20px auto;" onclick="go('mapa')">Volver al
+          Mapa</button>
       </div>
     </section>
 
@@ -232,4 +279,5 @@
   <script src="supabase-client.js"></script>
   <script src="app.js"></script>
 </body>
+
 </html>

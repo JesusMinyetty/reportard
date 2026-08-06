@@ -3,6 +3,9 @@ let selectedCategory = null;
 let reportMarkersLayer = null;
 let reporteSeleccionado = null;
 
+let reportLocation = null;
+let ubicacionDebounceTimer = null;
+
 function getClient() {
   if (!window.sb) {
     alert('Supabase no está configurado. Revisa supabase-client.js y tus claves.');
@@ -22,13 +25,11 @@ function go(screenId) {
   const screen = document.getElementById(screenId);
   if (screen) screen.classList.add('active');
 
-  // Actualiza navegación de escritorio y también bottom nav si existe
   document.querySelectorAll('.nav-btn, .nav-item').forEach(item => {
     const target = item.dataset?.screen || item.getAttribute('data-screen');
     item.classList.toggle('active', target === screenId);
   });
 
-  // Oculta el header en pantallas públicas
   const header = document.getElementById('desktop-header');
   if (header) {
     const hideHeader = ['splash', 'login', 'registro'].includes(screenId);
@@ -59,6 +60,10 @@ function go(screenId) {
 
   if (screenId === 'detalle') {
     setTimeout(mostrarDetalle, 80);
+  }
+
+  if (screenId === 'nuevo-reporte') {
+    setTimeout(setupUbicacionAutocomplete, 50);
   }
 }
 
@@ -152,7 +157,6 @@ function mapearUrgencia() {
     return select.value;
   }
 
-  // Respaldo por índice, por si el select no tiene value
   switch (select.selectedIndex) {
     case 0:
       return 'medio';
@@ -320,6 +324,7 @@ async function logoutUsuario() {
 
     selectedCategory = null;
     reporteSeleccionado = null;
+    reportLocation = null;
 
     go('login');
   } catch (err) {
@@ -383,6 +388,366 @@ async function cargarPerfil() {
   }
 }
 
+function setupUbicacionAutocomplete() {
+  const input = document.getElementById('reporte-ubicacion');
+
+  if (!input || input.dataset.autocompleteReady === 'true') return;
+
+  input.dataset.autocompleteReady = 'true';
+
+  input.addEventListener('input', onUbicacionInput);
+  input.addEventListener('focus', onUbicacionInput);
+
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      ocultarSugerenciasUbicacion();
+    }
+  });
+
+  document.addEventListener('click', (event) => {
+    const suggestions = document.getElementById('ubicacion-sugerencias');
+    if (!suggestions) return;
+
+    if (!input.contains(event.target) && !suggestions.contains(event.target)) {
+      suggestions.style.display = 'none';
+    }
+  });
+}
+
+function onUbicacionInput(event) {
+  const input = event.target;
+  const query = input.value.trim();
+
+  const suggestions = document.getElementById('ubicacion-sugerencias');
+
+  if (!query) {
+    reportLocation = null;
+
+    if (suggestions) {
+      suggestions.innerHTML = '';
+      suggestions.style.display = 'none';
+    }
+
+    return;
+  }
+
+  if (reportLocation) {
+    reportLocation.manualEdited = true;
+  }
+
+  if (query.length < 3) {
+    if (suggestions) {
+      suggestions.innerHTML = '';
+      suggestions.style.display = 'none';
+    }
+
+    return;
+  }
+
+  clearTimeout(ubicacionDebounceTimer);
+
+  ubicacionDebounceTimer = setTimeout(() => {
+    buscarSugerenciasUbicacion(query);
+  }, 700);
+}
+
+async function buscarSugerenciasUbicacion(query) {
+  const suggestions = document.getElementById('ubicacion-sugerencias');
+
+  if (!suggestions) return;
+
+  try {
+    suggestions.innerHTML = '<div class="sugerencia-item sugerencia-disabled">Buscando...</div>';
+    suggestions.style.display = 'block';
+
+    const url =
+      'https://nominatim.openstreetmap.org/search' +
+      `?format=jsonv2` +
+      '&addressdetails=1' +
+      '&limit=5' +
+      '&countrycodes=do' +
+      '&accept-language=es' +
+      `&q=${encodeURIComponent(query)}`;
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      throw new Error('HTTP ' + res.status);
+    }
+
+    const data = await res.json();
+
+    suggestions.innerHTML = '';
+
+    if (!data || data.length === 0) {
+      suggestions.innerHTML = '<div class="sugerencia-item sugerencia-disabled">No se encontraron resultados</div>';
+      return;
+    }
+
+    data.forEach(place => {
+      const div = document.createElement('div');
+      div.className = 'sugerencia-item';
+      div.textContent = formatNominatimLabel(place);
+
+      div.onclick = () => {
+        seleccionarSugerenciaUbicacion(place);
+      };
+
+      suggestions.appendChild(div);
+    });
+
+    suggestions.style.display = 'block';
+
+  } catch (err) {
+    console.error('Error buscando sugerencias de ubicación:', err);
+
+    if (suggestions) {
+      suggestions.innerHTML = '<div class="sugerencia-item sugerencia-disabled">No se pudo buscar la ubicación</div>';
+      suggestions.style.display = 'block';
+    }
+  }
+}
+
+function formatNominatimLabel(place) {
+  if (!place) return '';
+
+  const a = place.address || {};
+  const parts = [];
+
+  if (place.name && place.name !== 'yes') {
+    parts.push(place.name);
+  }
+
+  if (a.road) {
+    let road = a.road;
+
+    if (a.house_number) {
+      road += ` #${a.house_number}`;
+    }
+
+    parts.push(road);
+  }
+
+  if (a.neighbourhood) parts.push(a.neighbourhood);
+  if (a.suburb) parts.push(a.suburb);
+  if (a.city_district) parts.push(a.city_district);
+
+  const city = a.city || a.town || a.village || a.municipality;
+  if (city) parts.push(city);
+
+  if (a.state) parts.push(a.state);
+
+  const unique = [...new Set(parts.filter(Boolean))];
+
+  return unique.length ? unique.join(', ') : (place.display_name || 'Ubicación');
+}
+
+function seleccionarSugerenciaUbicacion(place) {
+  const input = document.getElementById('reporte-ubicacion');
+
+  if (!input) return;
+
+  const label = formatNominatimLabel(place);
+
+  input.value = label;
+
+  reportLocation = {
+    lat: Number(place.lat),
+    lng: Number(place.lon),
+    exact: false,
+    manualEdited: false,
+    text: label
+  };
+
+  ocultarSugerenciasUbicacion();
+}
+
+function ocultarSugerenciasUbicacion() {
+  const suggestions = document.getElementById('ubicacion-sugerencias');
+
+  if (suggestions) {
+    suggestions.style.display = 'none';
+  }
+}
+
+async function obtenerUbicacionExacta(btn) {
+  const input = document.getElementById('reporte-ubicacion');
+
+  if (!input) return;
+
+  if (!navigator.geolocation) {
+    alert('Tu navegador no soporta geolocalización.');
+    return;
+  }
+
+  const originalText = input.value;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '⏳';
+  }
+
+  input.placeholder = 'Obteniendo ubicación...';
+
+  try {
+    const position = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+    });
+
+    const lat = position.coords.latitude;
+    const lng = position.coords.longitude;
+
+    let label = await reverseGeocode(lat, lng);
+
+    if (!label) {
+      label = `Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`;
+    }
+
+    input.value = label;
+
+    reportLocation = {
+      lat,
+      lng,
+      exact: true,
+      manualEdited: false,
+      text: label,
+      accuracy: position.coords.accuracy
+    };
+
+    ocultarSugerenciasUbicacion();
+
+  } catch (error) {
+    console.error('Error obteniendo ubicación exacta:', error);
+
+    if (error.code === error.PERMISSION_DENIED) {
+      alert('Permiso de ubicación denegado. Activa el permiso de ubicación en el navegador.');
+    } else if (error.code === error.POSITION_UNAVAILABLE) {
+      alert('No se pudo determinar la ubicación del dispositivo.');
+    } else if (error.code === error.TIMEOUT) {
+      alert('El navegador tardó demasiado en obtener la ubicación.');
+    } else {
+      alert('No se pudo obtener la ubicación.');
+    }
+
+    input.value = originalText;
+
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '📍 GPS';
+    }
+
+    input.placeholder = 'Escribe sector, calle o dirección';
+  }
+}
+
+async function reverseGeocode(lat, lng) {
+  try {
+    const url =
+      'https://nominatim.openstreetmap.org/reverse' +
+      `?format=jsonv2` +
+      `&lat=${lat}` +
+      `&lon=${lng}` +
+      '&accept-language=es';
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      return '';
+    }
+
+    const data = await res.json();
+
+    if (!data || !data.address) {
+      return '';
+    }
+
+    return formatReverseAddress(data.address);
+
+  } catch (err) {
+    console.error('Error haciendo reverse geocode:', err);
+    return '';
+  }
+}
+
+function formatReverseAddress(a) {
+  if (!a) return '';
+
+  const parts = [];
+
+  if (a.amenity) parts.push(a.amenity);
+  if (a.building) parts.push(a.building);
+
+  if (a.road) {
+    let road = a.road;
+
+    if (a.house_number) {
+      road += ` #${a.house_number}`;
+    }
+
+    parts.push(road);
+  }
+
+  if (a.neighbourhood) parts.push(a.neighbourhood);
+  if (a.suburb) parts.push(a.suburb);
+  if (a.city_district) parts.push(a.city_district);
+
+  const city = a.city || a.town || a.village || a.municipality;
+  if (city) parts.push(city);
+
+  if (a.state) parts.push(a.state);
+  if (a.postcode) parts.push(a.postcode);
+
+  const unique = [...new Set(parts.filter(Boolean))];
+
+  return unique.join(', ');
+}
+
+async function geocodeText(query) {
+  try {
+    const url =
+      'https://nominatim.openstreetmap.org/search' +
+      `?format=jsonv2` +
+      '&addressdetails=1' +
+      '&limit=1' +
+      '&countrycodes=do' +
+      '&accept-language=es' +
+      `&q=${encodeURIComponent(query)}`;
+
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      return null;
+    }
+
+    const data = await res.json();
+
+    if (!data || !data[0]) {
+      return null;
+    }
+
+    const lat = Number(data[0].lat);
+    const lng = Number(data[0].lon);
+
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return null;
+    }
+
+    return {
+      lat,
+      lng
+    };
+
+  } catch (err) {
+    console.error('Error geocodificando texto:', err);
+    return null;
+  }
+}
+
 async function enviarReporte() {
   const btn = document.getElementById('btn-enviar-reporte');
 
@@ -413,12 +778,43 @@ async function enviarReporte() {
     let latitude = 18.4861;
     let longitude = -69.9312;
 
-    try {
-      const ubicacionReal = await obtenerUbicacion();
-      latitude = ubicacionReal.lat;
-      longitude = ubicacionReal.lng;
-    } catch (gpsError) {
-      console.warn('GPS no disponible. Usando coordenadas por defecto.');
+    if (
+      reportLocation &&
+      !reportLocation.manualEdited &&
+      Number.isFinite(reportLocation.lat) &&
+      Number.isFinite(reportLocation.lng)
+    ) {
+      latitude = reportLocation.lat;
+      longitude = reportLocation.lng;
+    } else {
+      let geocoded = null;
+
+      if (ubicacion) {
+        geocoded = await geocodeText(ubicacion);
+      }
+
+      if (geocoded) {
+        latitude = geocoded.lat;
+        longitude = geocoded.lng;
+      } else if (
+        reportLocation &&
+        Number.isFinite(reportLocation.lat) &&
+        Number.isFinite(reportLocation.lng)
+      ) {
+        latitude = reportLocation.lat;
+        longitude = reportLocation.lng;
+      } else {
+        try {
+          const gps = await obtenerUbicacion();
+
+          if (gps && Number.isFinite(gps.lat) && Number.isFinite(gps.lng)) {
+            latitude = gps.lat;
+            longitude = gps.lng;
+          }
+        } catch (gpsError) {
+          console.warn('No se pudo obtener GPS automáticamente.');
+        }
+      }
     }
 
     const tracking_number = generateTrackingNumber();
@@ -449,7 +845,6 @@ async function enviarReporte() {
       .select()
       .single();
 
-    // Respaldo por si la tabla reports todavía no tiene image_url
     if (result.error && result.error.message && result.error.message.includes('image_url')) {
       delete payload.image_url;
 
@@ -486,6 +881,9 @@ async function enviarReporte() {
 
 function resetReportForm() {
   selectedCategory = null;
+  reportLocation = null;
+
+  clearTimeout(ubicacionDebounceTimer);
 
   document.querySelectorAll('.cat-item').forEach(i => i.classList.remove('selected'));
 
@@ -493,11 +891,17 @@ function resetReportForm() {
   const ubicacion = document.getElementById('reporte-ubicacion');
   const urgencia = document.getElementById('reporte-urgencia');
   const fileInput = document.getElementById('input-evidencia');
+  const sugerencias = document.getElementById('ubicacion-sugerencias');
 
   if (descripcion) descripcion.value = '';
   if (ubicacion) ubicacion.value = '';
   if (urgencia) urgencia.value = 'medio';
   if (fileInput) fileInput.value = '';
+
+  if (sugerencias) {
+    sugerencias.innerHTML = '';
+    sugerencias.style.display = 'none';
+  }
 }
 
 async function subirImagen(file) {
@@ -868,6 +1272,7 @@ function showToast(message) {
 
 function initAppListeners() {
   ensureToast();
+  setupUbicacionAutocomplete();
 
   setTimeout(() => {
     iniciarApp();
@@ -890,3 +1295,4 @@ window.showToast = showToast;
 window.mostrarDetalle = mostrarDetalle;
 window.modoAnonimo = modoAnonimo;
 window.iniciarApp = iniciarApp;
+window.obtenerUbicacionExacta = obtenerUbicacionExacta;
