@@ -29,7 +29,7 @@ create table if not exists public.reports (
   id uuid primary key default gen_random_uuid(),
   user_id uuid references auth.users(id) on delete set null,
   report_type text not null,
-  urgency text not null,
+  urgency text not null default 'medio',
   description text,
   location_text text,
   latitude double precision,
@@ -42,6 +42,47 @@ create table if not exists public.reports (
 
 alter table public.reports
 add column if not exists image_url text;
+
+alter table public.reports
+alter column urgency set default 'medio';
+
+-- =====================================================
+-- NORMALIZAR URGENCIA
+-- =====================================================
+
+update public.reports
+set urgency = lower(trim(urgency));
+
+update public.reports
+set urgency = 'medio'
+where urgency in ('moderado', 'medio');
+
+update public.reports
+set urgency = 'alto'
+where urgency = 'alto';
+
+update public.reports
+set urgency = 'critico'
+where urgency in ('critico', 'crítico');
+
+update public.reports
+set urgency = 'bajo'
+where urgency = 'bajo';
+
+update public.reports
+set urgency = 'critico'
+where urgency like '%emergencia%';
+
+update public.reports
+set urgency = 'medio'
+where urgency not in ('bajo', 'medio', 'alto', 'critico');
+
+alter table public.reports
+drop constraint if exists reports_urgency_check;
+
+alter table public.reports
+add constraint reports_urgency_check
+check (urgency in ('bajo', 'medio', 'alto', 'critico'));
 
 -- =====================================================
 -- REPORT EVIDENCE

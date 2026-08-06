@@ -6,6 +6,9 @@ let reporteSeleccionado = null;
 let reportLocation = null;
 let ubicacionDebounceTimer = null;
 
+let ultimoReporteId = null;
+let confirmacionTimeout = null;
+
 function getClient() {
   if (!window.sb) {
     alert('Supabase no está configurado. Revisa supabase-client.js y tus claves.');
@@ -16,18 +19,19 @@ function getClient() {
 }
 
 function go(screenId) {
-  if (screenId === 'detalle') {
-    ensureDetalleScreen();
+  if (screenId !== 'confirmacion' && confirmacionTimeout) {
+    clearTimeout(confirmacionTimeout);
+    confirmacionTimeout = null;
   }
 
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-
   const screen = document.getElementById(screenId);
-  if (screen) screen.classList.add('active');
+  if (!screen) return;
 
-  document.querySelectorAll('.nav-btn, .nav-item').forEach(item => {
-    const target = item.dataset?.screen || item.getAttribute('data-screen');
-    item.classList.toggle('active', target === screenId);
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  screen.classList.add('active');
+
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.screen === screenId);
   });
 
   const header = document.getElementById('desktop-header');
@@ -63,7 +67,7 @@ function go(screenId) {
   }
 
   if (screenId === 'nuevo-reporte') {
-    setTimeout(setupUbicacionAutocomplete, 50);
+    setTimeout(setupUbicacionAutocomplete, 60);
   }
 }
 
@@ -94,17 +98,34 @@ function initMap() {
   reportMarkersLayer = L.layerGroup().addTo(map);
 }
 
-function getMarkerIcon() {
+function getReportMarkerIcon(urgency) {
   if (typeof L === 'undefined') return null;
 
-  return L.icon({
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
+  let color = '#f57f17';
+
+  if (urgency === 'critico') {
+    color = '#c62828';
+  } else if (urgency === 'alto') {
+    color = '#e65100';
+  } else if (urgency === 'bajo') {
+    color = '#2e7d32';
+  }
+
+  return L.divIcon({
+    className: 'report-marker',
+    html: `
+      <div style="
+        width:20px;
+        height:20px;
+        border-radius:50%;
+        background:${color};
+        border:3px solid #ffffff;
+        box-shadow:0 0 0 2px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.35);
+      "></div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -10]
   });
 }
 
@@ -177,6 +198,11 @@ function modoAnonimo() {
 
 async function iniciarApp() {
   try {
+    const splash = document.getElementById('splash');
+    const splashActive = splash ? splash.classList.contains('active') : false;
+
+    if (!splashActive) return;
+
     if (!window.sb) {
       go('login');
       return;
@@ -191,7 +217,13 @@ async function iniciarApp() {
     }
   } catch (err) {
     console.error(err);
-    go('login');
+
+    const splash = document.getElementById('splash');
+    const splashActive = splash ? splash.classList.contains('active') : false;
+
+    if (splashActive) {
+      go('login');
+    }
   }
 }
 
@@ -325,6 +357,10 @@ async function logoutUsuario() {
     selectedCategory = null;
     reporteSeleccionado = null;
     reportLocation = null;
+    ultimoReporteId = null;
+
+    clearTimeout(confirmacionTimeout);
+    confirmacionTimeout = null;
 
     go('login');
   } catch (err) {
@@ -388,6 +424,26 @@ async function cargarPerfil() {
   }
 }
 
+function ensureUbicacionSugerencias() {
+  let suggestions = document.getElementById('ubicacion-sugerencias');
+
+  if (suggestions) {
+    return suggestions;
+  }
+
+  const input = document.getElementById('reporte-ubicacion');
+  if (!input) return null;
+
+  suggestions = document.createElement('div');
+  suggestions.id = 'ubicacion-sugerencias';
+  suggestions.className = 'sugerencias-ubicacion';
+
+  const container = input.closest('.form-group') || input.parentElement || document.body;
+  container.appendChild(suggestions);
+
+  return suggestions;
+}
+
 function setupUbicacionAutocomplete() {
   const input = document.getElementById('reporte-ubicacion');
 
@@ -405,7 +461,7 @@ function setupUbicacionAutocomplete() {
   });
 
   document.addEventListener('click', (event) => {
-    const suggestions = document.getElementById('ubicacion-sugerencias');
+    const suggestions = ensureUbicacionSugerencias();
     if (!suggestions) return;
 
     if (!input.contains(event.target) && !suggestions.contains(event.target)) {
@@ -418,7 +474,7 @@ function onUbicacionInput(event) {
   const input = event.target;
   const query = input.value.trim();
 
-  const suggestions = document.getElementById('ubicacion-sugerencias');
+  const suggestions = ensureUbicacionSugerencias();
 
   if (!query) {
     reportLocation = null;
@@ -452,7 +508,7 @@ function onUbicacionInput(event) {
 }
 
 async function buscarSugerenciasUbicacion(query) {
-  const suggestions = document.getElementById('ubicacion-sugerencias');
+  const suggestions = ensureUbicacionSugerencias();
 
   if (!suggestions) return;
 
@@ -624,7 +680,7 @@ async function obtenerUbicacionExacta(btn) {
     console.error('Error obteniendo ubicación exacta:', error);
 
     if (error.code === error.PERMISSION_DENIED) {
-      alert('Permiso de ubicación denegado. Activa el permiso de ubicación en el navegador.');
+      alert('Permiso de ubicación denegado. Activa el permiso en el navegador.');
     } else if (error.code === error.POSITION_UNAVAILABLE) {
       alert('No se pudo determinar la ubicación del dispositivo.');
     } else if (error.code === error.TIMEOUT) {
@@ -662,7 +718,7 @@ async function reverseGeocode(lat, lng) {
 
     const data = await res.json();
 
-    if (!data || !data.address) {
+    if (!data || data.error || !data.address) {
       return '';
     }
 
@@ -709,41 +765,46 @@ function formatReverseAddress(a) {
 
 async function geocodeText(query) {
   try {
-    const url =
-      'https://nominatim.openstreetmap.org/search' +
-      `?format=jsonv2` +
-      '&addressdetails=1' +
-      '&limit=1' +
-      '&countrycodes=do' +
-      '&accept-language=es' +
-      `&q=${encodeURIComponent(query)}`;
+    const clean = query.trim();
 
-    const res = await fetch(url);
+    if (!clean) return null;
 
-    if (!res.ok) {
-      return null;
+    const attempts = [
+      `${clean}, República Dominicana`,
+      clean
+    ];
+
+    for (const attempt of attempts) {
+      const url =
+        'https://nominatim.openstreetmap.org/search' +
+        `?format=jsonv2` +
+        '&limit=1' +
+        '&accept-language=es' +
+        `&q=${encodeURIComponent(attempt)}`;
+
+      const res = await fetch(url);
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+
+      if (data && data[0]) {
+        const lat = Number(data[0].lat);
+        const lng = Number(data[0].lon);
+
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return {
+            lat,
+            lng
+          };
+        }
+      }
     }
 
-    const data = await res.json();
-
-    if (!data || !data[0]) {
-      return null;
-    }
-
-    const lat = Number(data[0].lat);
-    const lng = Number(data[0].lon);
-
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-      return null;
-    }
-
-    return {
-      lat,
-      lng
-    };
+    return null;
 
   } catch (err) {
-    console.error('Error geocodificando texto:', err);
+    console.error('Error geocodificando ubicación:', err);
     return null;
   }
 }
@@ -775,34 +836,26 @@ async function enviarReporte() {
     const { data: authData } = await sb.auth.getUser();
     const user = authData?.user;
 
-    let latitude = 18.4861;
-    let longitude = -69.9312;
+    let latitude = null;
+    let longitude = null;
 
-    if (
+    const hasReportLocation =
       reportLocation &&
-      !reportLocation.manualEdited &&
-      Number.isFinite(reportLocation.lat) &&
-      Number.isFinite(reportLocation.lng)
-    ) {
-      latitude = reportLocation.lat;
-      longitude = reportLocation.lng;
-    } else {
-      let geocoded = null;
+      Number.isFinite(Number(reportLocation.lat)) &&
+      Number.isFinite(Number(reportLocation.lng));
 
-      if (ubicacion) {
-        geocoded = await geocodeText(ubicacion);
-      }
+    if (hasReportLocation && !reportLocation.manualEdited) {
+      latitude = Number(reportLocation.lat);
+      longitude = Number(reportLocation.lng);
+    } else {
+      const geocoded = await geocodeText(ubicacion);
 
       if (geocoded) {
         latitude = geocoded.lat;
         longitude = geocoded.lng;
-      } else if (
-        reportLocation &&
-        Number.isFinite(reportLocation.lat) &&
-        Number.isFinite(reportLocation.lng)
-      ) {
-        latitude = reportLocation.lat;
-        longitude = reportLocation.lng;
+      } else if (hasReportLocation) {
+        latitude = Number(reportLocation.lat);
+        longitude = Number(reportLocation.lng);
       } else {
         try {
           const gps = await obtenerUbicacion();
@@ -815,6 +868,19 @@ async function enviarReporte() {
           console.warn('No se pudo obtener GPS automáticamente.');
         }
       }
+    }
+
+    console.log('Coordenadas finales del reporte:', {
+      latitude,
+      longitude
+    });
+
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+      alert(
+        'No se pudo obtener la ubicación del reporte. ' +
+        'Escribe una dirección más completa o usa el botón GPS.'
+      );
+      return;
     }
 
     const tracking_number = generateTrackingNumber();
@@ -861,13 +927,30 @@ async function enviarReporte() {
       return;
     }
 
+    const insertedReport = result.data;
+
     const trackingEl = document.getElementById('tracking-number');
-    if (trackingEl && result.data?.tracking_number) {
-      trackingEl.innerText = `#${result.data.tracking_number}`;
+    if (trackingEl && insertedReport?.tracking_number) {
+      trackingEl.innerText = `#${insertedReport.tracking_number}`;
     }
 
     resetReportForm();
+
+    if (insertedReport) {
+      ultimoReporteId = insertedReport.id;
+
+      if (map && reportMarkersLayer) {
+        agregarMarcadorReporte(insertedReport);
+      }
+    }
+
+    clearTimeout(confirmacionTimeout);
+
     go('confirmacion');
+
+    confirmacionTimeout = setTimeout(() => {
+      go('mapa');
+    }, 2500);
 
   } catch (err) {
     console.error('ERROR GENERAL:', err);
@@ -992,6 +1075,7 @@ async function cargarFeed() {
     const { data, error } = await sb
       .from('reports')
       .select(`
+        id,
         report_type,
         urgency,
         description,
@@ -1029,7 +1113,6 @@ async function cargarFeed() {
 
       item.onclick = () => {
         reporteSeleccionado = r;
-        ensureDetalleScreen();
         go('detalle');
       };
 
@@ -1075,71 +1158,8 @@ async function cargarFeed() {
   }
 }
 
-function ensureDetalleScreen() {
-  if (document.getElementById('detalle')) return;
-
-  const container = document.querySelector('.desktop-main') || document.body;
-
-  const section = document.createElement('section');
-  section.id = 'detalle';
-  section.className = 'screen';
-
-  section.innerHTML = `
-    <div class="page-container">
-      <div class="page-header">
-        <button class="back-link" onclick="go('feed')">← Volver a Reportes</button>
-        <h2>Detalle del Reporte</h2>
-      </div>
-
-      <div class="form-container">
-        <div class="card">
-          <h2 id="detalle-titulo">Reporte</h2>
-          <p class="small" id="detalle-tipo"></p>
-        </div>
-
-        <div class="card">
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:16px;">
-            <div>
-              <strong>Fecha y hora</strong>
-              <p id="detalle-fecha" class="small">--</p>
-            </div>
-
-            <div>
-              <strong>Estado</strong>
-              <p id="detalle-estado" class="small">--</p>
-            </div>
-
-            <div>
-              <strong>Ubicación</strong>
-              <p id="detalle-ubicacion" class="small">--</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="card">
-          <h3>Descripción</h3>
-          <p id="detalle-descripcion">Sin descripción.</p>
-        </div>
-
-        <div class="card">
-          <h3>Evidencias adjuntas</h3>
-          <div id="detalle-evidencias" style="margin-top:12px;"></div>
-        </div>
-
-        <button class="btn-danger" onclick="showToast('🚨 Reporte marcado como urgente')">
-          🚨 Reportar como urgente
-        </button>
-      </div>
-    </div>
-  `;
-
-  container.appendChild(section);
-}
-
 function mostrarDetalle() {
   if (!reporteSeleccionado) return;
-
-  ensureDetalleScreen();
 
   const titulo = document.getElementById('detalle-titulo');
   const tipo = document.getElementById('detalle-tipo');
@@ -1202,6 +1222,33 @@ function mostrarDetalle() {
   }
 }
 
+function agregarMarcadorReporte(reporte) {
+  if (!map || !reportMarkersLayer || !reporte) return;
+
+  const lat = Number(reporte.latitude);
+  const lng = Number(reporte.longitude);
+
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+  const icon = getReportMarkerIcon(reporte.urgency);
+
+  const marker = icon
+    ? L.marker([lat, lng], { icon }).addTo(reportMarkersLayer)
+    : L.marker([lat, lng]).addTo(reportMarkersLayer);
+
+  const popup = `
+    <b>${escapeHtml(reporte.report_type || 'Reporte')}</b><br>
+    📍 ${escapeHtml(reporte.location_text || 'Sin ubicación')}<br>
+    🕐 ${escapeHtml(formatRelativeTime(reporte.created_at || new Date().toISOString()))}<br>
+    ✅ Reporte recién enviado
+  `;
+
+  marker.bindPopup(popup);
+
+  map.setView([lat, lng], 16);
+  marker.openPopup();
+}
+
 async function cargarReportesEnMapa() {
   try {
     const sb = getClient();
@@ -1212,17 +1259,27 @@ async function cargarReportesEnMapa() {
 
     const { data, error } = await sb
       .from('reports')
-      .select('report_type, location_text, latitude, longitude, created_at');
+      .select('id, report_type, location_text, latitude, longitude, created_at, urgency')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error(error);
       return;
     }
 
-    const icon = getMarkerIcon();
+    let marcadorNuevo = null;
 
     (data || []).forEach(r => {
-      if (typeof r.latitude !== 'number' || typeof r.longitude !== 'number') return;
+      const lat = Number(r.latitude);
+      const lng = Number(r.longitude);
+
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+      const icon = getReportMarkerIcon(r.urgency);
+
+      const marker = icon
+        ? L.marker([lat, lng], { icon }).addTo(reportMarkersLayer)
+        : L.marker([lat, lng]).addTo(reportMarkersLayer);
 
       const popup = `
         <b>${escapeHtml(r.report_type || 'Reporte')}</b><br>
@@ -1230,11 +1287,21 @@ async function cargarReportesEnMapa() {
         🕐 ${escapeHtml(formatRelativeTime(r.created_at))}
       `;
 
-      const marker = L.marker([r.latitude, r.longitude], { icon });
-
       marker.bindPopup(popup);
-      marker.addTo(reportMarkersLayer);
+
+      if (ultimoReporteId && r.id === ultimoReporteId) {
+        marcadorNuevo = marker;
+      }
     });
+
+    if (marcadorNuevo) {
+      const latlng = marcadorNuevo.getLatLng();
+
+      map.setView(latlng, 16);
+      marcadorNuevo.openPopup();
+
+      ultimoReporteId = null;
+    }
 
   } catch (err) {
     console.error(err);
